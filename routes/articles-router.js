@@ -3,7 +3,7 @@ const {
   getArticleByArticleId,
   patchArticleByArticleId,
   postCommentByArticleId,
-  getCommentByArticleId,
+  getCommentsByArticleId,
   getArticles
 } = require("../controllers/articles-controllers");
 // const { send405Error } = require("../errors/error-handler");
@@ -19,6 +19,6 @@ articlesRouter
 articlesRouter
   .route("/:article_id/comments")
   .post(postCommentByArticleId)
-  .get(getCommentByArticleId);
+  .get(getCommentsByArticleId);
 
 module.exports = articlesRouter;
