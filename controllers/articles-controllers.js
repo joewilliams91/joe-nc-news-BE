@@ -1,5 +1,4 @@
 const {
-  selectArticleByArticleId,
   updateArticleByArticleId,
   insertCommentByArticleId,
   selectCommentsByArticleId,
@@ -8,39 +7,66 @@ const {
 
 exports.getArticleByArticleId = (req, res, next) => {
   const article_id = req.params.article_id;
-  selectArticleByArticleId(article_id).then(article => {
-    res.status(200).send({ article });
-  });
+  selectArticles(article_id)
+    .then(article => {
+      res.status(200).send({ article });
+    })
+    .catch(err => {
+      next(err);
+    });
 };
 
 exports.patchArticleByArticleId = (req, res, next) => {
-  const incrementer = req.body.inc_votes;
-  const article_id = req.params.article_id;
-  updateArticleByArticleId(incrementer, article_id).then(article => {
-    res.status(200).send({ article });
-  });
+  if (!req.body.inc_votes || Object.keys(req.body).length > 1) {
+    next({ status: 400, msg: "Bad Request" });
+  } else {
+    const incrementer = req.body.inc_votes;
+    const article_id = req.params.article_id;
+    updateArticleByArticleId(incrementer, article_id)
+      .then(article => {
+        res.status(200).send({ article });
+      })
+      .catch(err => {
+        next(err);
+      });
+  }
 };
 
 exports.postCommentByArticleId = (req, res, next) => {
   const { username, body } = req.body;
   const { article_id } = req.params;
-  insertCommentByArticleId(username, body, article_id).then(comment => {
-    res.status(201).send({ comment });
-  });
+  insertCommentByArticleId(username, body, article_id)
+    .then(comment => {
+      res.status(201).send({ comment });
+    })
+    .catch(err => {
+      next(err);
+    });
 };
 
 exports.getCommentsByArticleId = (req, res, next) => {
   const article_id = req.params;
   const { sort_by, order } = req.query;
-  console.log(sort_by);
-  selectCommentsByArticleId(article_id, sort_by, order).then(comments => {
-    res.status(200).send({ comments });
-  });
+  if ((order && order !== "asc") || (order && order !== "desc")) {
+    next({ status: 400, msg: "Bad Request" });
+  } else {
+    selectCommentsByArticleId(article_id, sort_by, order)
+      .then(comments => {
+        res.status(200).send({ comments });
+      })
+      .catch(err => {
+        next(err);
+      });
+  }
 };
 
 exports.getArticles = (req, res, next) => {
   const { sort_by, order, author, topic } = req.query;
-  selectArticles(sort_by, order, author, topic).then(articles => {
-    res.status(200).send({ articles });
-  });
+  selectArticles(null, sort_by, order, author, topic)
+    .then(articles => {
+      res.status(200).send({ articles });
+    })
+    .catch(err => {
+      next(err);
+    });
 };
