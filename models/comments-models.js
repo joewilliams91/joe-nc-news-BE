@@ -6,7 +6,11 @@ exports.updateCommentByCommentId = (comment_id, incrementer) => {
     .increment("votes", incrementer)
     .returning("*")
     .then(([comment]) => {
-      return comment;
+      if (!comment) {
+        return Promise.reject({ status: 404, msg: "Page not Found" });
+      } else {
+        return comment;
+      }
     });
 };
 
@@ -16,7 +20,7 @@ exports.removeCommentByCommentId = comment_id => {
     .del()
     .then(deleteCount => {
       if (deleteCount === 0)
-        return Promise.reject({ status: 404, msg: "Path not Found" });
+        return Promise.reject({ status: 404, msg: "Page not Found" });
       else return deleteCount;
     });
 };

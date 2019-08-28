@@ -188,6 +188,54 @@ describe("/api", () => {
               }
             });
         });
+        it("ERROR STATUS:400 when a valid value matching no columns is entered as a sort_by url query", () => {
+          return request(app)
+            .get("/api/articles?sort_by=notAColumn")
+            .expect(400)
+            .then(({ body }) => {
+              expect(body.msg).to.equal("Bad Request");
+            });
+        });
+        it("ERROR STATUS:400 when an invalid value is entered as an order url query", () => {
+          return request(app)
+            .get("/api/articles?order=notAnOrder")
+            .expect(400)
+            .then(({ body }) => {
+              expect(body.msg).to.equal("Bad Request");
+            });
+        });
+        it("ERROR STATUS:400 when a valid topic/author that does not match any topics in the database is passed as a topic/author url query", () => {
+          return request(app)
+            .get("/api/articles?topic=notATopic")
+            .expect(400)
+            .then(({ body }) => {
+              expect(body.msg).to.equal("Bad Request");
+            })
+            .then(() => {
+              return request(app)
+                .get("/api/articles?author=notAnAuthor")
+                .expect(400)
+                .then(({ body }) => {
+                  expect(body.msg).to.equal("Bad Request");
+                });
+            });
+        });
+        it("ERROR STATUS:400 when a valid topic/author, matching a topic/author in the database, is passed as a topic/author url query, but the chosen topic/author does not have any associated articles", () => {
+          return request(app)
+            .get("/api/articles?topic=paper")
+            .expect(400)
+            .then(({ body }) => {
+              expect(body.msg).to.equal("Bad Request");
+            })
+            .then(() => {
+              return request(app)
+                .get("/api/articles?author=lurker")
+                .expect(400)
+                .then(({ body }) => {
+                  expect(body.msg).to.equal("Bad Request");
+                });
+            });
+        });
       });
       describe("INVALID METHODS", () => {
         it("STATUS:405 when invalid methods are requested", () => {
@@ -374,6 +422,72 @@ describe("/api", () => {
                 expect(response.body.comment.comment_id).to.equal(19);
               });
           });
+          it("ERROR STATUS:422 when a valid, non-existent article_id is passed as the article_id parametric endpoint", () => {
+            return request(app)
+              .post("/api/articles/9999999/comments")
+              .send({ username: "icellusedkars", body: "Love it" })
+              .expect(422)
+              .then(({ body }) => {
+                expect(body.msg).to.equal("Unprocessable Entity");
+              });
+          });
+          it("ERROR STATUS:400 when an invalid article_id is passed as the article_id parametric endpoint", () => {
+            return request(app)
+              .post("/api/articles/invalidId/comments")
+              .send({ username: "icellusedkars", body: "Love it" })
+              .expect(400)
+              .then(({ body }) => {
+                expect(body.msg).to.equal("Bad Request");
+              });
+          });
+          it("ERROR STATUS:400 when a post request is made with an empty object", () => {
+            return request(app)
+              .post("/api/articles/1/comments")
+              .send({})
+              .expect(400)
+              .then(({ body }) => {
+                expect(body.msg).to.equal("Bad Request");
+              });
+          });
+          it("ERROR STATUS:400 when a post request is made with one key missing", () => {
+            return request(app)
+              .post("/api/articles/1/comments")
+              .send({ username: "icellusedkars" })
+              .expect(400)
+              .then(({ body }) => {
+                expect(body.msg).to.equal("Bad Request");
+              })
+              .then(() => {
+                return request(app)
+                  .post("/api/articles/1/comments")
+                  .send({ body: "Love it" })
+                  .expect(400)
+                  .then(({ body }) => {
+                    expect(body.msg).to.equal("Bad Request");
+                  });
+              });
+          });
+          it("ERROR STATUS:422 when a post request is made containing a valid username which does not match any users", () => {
+            return request(app)
+              .post("/api/articles/1/comments")
+              .send({ username: "nonExistentUser", body: "Love it" })
+              .expect(422)
+              .then(({ body }) => {
+                expect(body.msg).to.equal("Unprocessable Entity");
+              });
+          });
+          it("ERROR STATUS:400 when a post request is made containing an invalid body", () => {
+            return request(app)
+              .post("/api/articles/1/comments")
+              .send({
+                username: "icellusedkars",
+                body: ["invalidBody", 1234, { invalid: "body" }]
+              })
+              .expect(400)
+              .then(({ body }) => {
+                expect(body.msg).to.equal("Bad Request");
+              });
+          });
         });
         describe("GET", () => {
           it("STATUS:200 and returns an array of all comment objects for the given article_id", () => {
@@ -496,7 +610,62 @@ describe("/api", () => {
               expect(response.body.comment.article_id).to.equal(9);
             });
         });
+        it("ERROR STATUS:404 when a valid comment_id matching no comments in the database is passed as a parametric endpoint", () => {
+          return request(app)
+            .patch("/api/comments/999999999")
+            .send({ inc_votes: 1 })
+            .expect(404)
+            .then(({ body }) => {
+              expect(body.msg).to.equal("Page not Found");
+            });
+        });
+        it("ERROR STATUS:400 when an invalid comment_id is passed as a parametric endpoint", () => {
+          return request(app)
+            .patch("/api/comments/notAComment")
+            .send({ inc_votes: 1 })
+            .expect(400)
+            .then(({ body }) => {
+              expect(body.msg).to.equal("Bad Request");
+            });
+        });
+        it("ERROR STATUS:400 when an empty request body is sent", () => {
+          return request(app)
+            .patch("/api/comments/1")
+            .send({})
+            .expect(400)
+            .then(({ body }) => {
+              expect(body.msg).to.equal("Bad Request");
+            });
+        });
+        it("ERROR STATUS:400 when a request body containing an invalid key or value is sent", () => {
+          return request(app)
+            .patch("/api/comments/1")
+            .send({ notAValidKey: 1 })
+            .expect(400)
+            .then(({ body }) => {
+              expect(body.msg).to.equal("Bad Request");
+            })
+            .then(() => {
+              return request(app)
+                .patch("/api/comments/1")
+                .send({ inc_votes: "notANumber" })
+                .expect(400)
+                .then(({ body }) => {
+                  expect(body.msg).to.equal("Bad Request");
+                });
+            });
+        });
+        it("ERROR STATUS:400 when a request body containing additional properties is sent", () => {
+          return request(app)
+            .patch("/api/comments/1")
+            .send({ inc_votes: 1, anotherKey: "invalid" })
+            .expect(400)
+            .then(({ body }) => {
+              expect(body.msg).to.equal("Bad Request");
+            });
+        });
       });
+
       describe("DELETE", () => {
         it("STATUS CODE:204 no content for successful deletion, which also ensures deletion is accounted for at other endpoints", () => {
           return request(app)
@@ -536,6 +705,22 @@ describe("/api", () => {
                 });
             });
         });
+        it("ERROR STATUS:404 when a valid comment_id that does not match any comment_id in the database is passed as a parametric endpoint", () => {
+          return request(app)
+            .delete("/api/comments/999999999")
+            .expect(404)
+            .then(({ body }) => {
+              expect(body.msg).to.equal("Page not Found");
+            });
+        });
+        it('ERROR STATUS:400 when an invalid comment_id is passed as a parametric endpoint', () => {
+          return request(app)
+            .delete("/api/comments/invalidComment")
+            .expect(400)
+            .then(({ body }) => {
+              expect(body.msg).to.equal("Bad Request");
+            });
+        })
       });
       describe("INVALID METHODS", () => {
         it("STATUS CODE:405 when invalid methods are requested", () => {

@@ -35,19 +35,24 @@ exports.patchArticleByArticleId = (req, res, next) => {
 exports.postCommentByArticleId = (req, res, next) => {
   const { username, body } = req.body;
   const { article_id } = req.params;
-  insertCommentByArticleId(username, body, article_id)
-    .then(comment => {
-      res.status(201).send({ comment });
-    })
-    .catch(err => {
-      next(err);
-    });
+
+  if (typeof body !== "string") {
+    next({ status: 400, msg: "Bad Request" });
+  } else {
+    insertCommentByArticleId(username, body, article_id)
+      .then(comment => {
+        res.status(201).send({ comment });
+      })
+      .catch(err => {
+        next(err);
+      });
+  }
 };
 
 exports.getCommentsByArticleId = (req, res, next) => {
   const article_id = req.params;
   const { sort_by, order } = req.query;
-  if ((order && order !== "asc") || (order && order !== "desc")) {
+  if (order && !/(de|a)sc/.test(order)) {
     next({ status: 400, msg: "Bad Request" });
   } else {
     selectCommentsByArticleId(article_id, sort_by, order)
@@ -62,11 +67,15 @@ exports.getCommentsByArticleId = (req, res, next) => {
 
 exports.getArticles = (req, res, next) => {
   const { sort_by, order, author, topic } = req.query;
-  selectArticles(null, sort_by, order, author, topic)
-    .then(articles => {
-      res.status(200).send({ articles });
-    })
-    .catch(err => {
-      next(err);
-    });
+  if (order && !/(de|a)sc/.test(order)) {
+    next({ status: 400, msg: "Bad Request" });
+  } else {
+    selectArticles(null, sort_by, order, author, topic)
+      .then(articles => {
+        res.status(200).send({ articles });
+      })
+      .catch(err => {
+        next(err);
+      });
+  }
 };
