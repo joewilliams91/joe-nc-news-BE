@@ -20,7 +20,7 @@ describe("/api", () => {
         .get("/api/invalidPath")
         .expect(404)
         .then(response => {
-          expect(response.body.msg).to.eql("Page not Found");
+          expect(response.body.msg).to.eql("Not Found");
         });
     });
   });
@@ -85,7 +85,7 @@ describe("/api", () => {
             .get("/api/users/nonExistentUser")
             .expect(404)
             .then(({ body }) => {
-              expect(body.msg).to.equal("Page not Found");
+              expect(body.msg).to.equal("Not Found");
             });
         });
       });
@@ -287,7 +287,7 @@ describe("/api", () => {
               .get("/api/articles/99999999")
               .expect(404)
               .then(({ body }) => {
-                expect(body.msg).to.equal("Page not Found");
+                expect(body.msg).to.equal("Not Found");
               });
           });
           it("ERROR STATUS:400 when an invalid article_id is passed as the :article_id parametric endpoint", () => {
@@ -344,7 +344,7 @@ describe("/api", () => {
               .send({ inc_votes: 1 })
               .expect(404)
               .then(({ body }) => {
-                expect(body.msg).to.equal("Page not Found");
+                expect(body.msg).to.equal("Not Found");
               });
           });
           it("ERROR STATUS:400 when an invalid article_id is passed as the :article_id parametric endpoint", () => {
@@ -365,7 +365,7 @@ describe("/api", () => {
                 expect(body.msg).to.equal("Bad Request");
               });
           });
-          it("ERROR STATUS:400 when the inc_votes key value is invalid", () => {
+          it("ERROR STATUS:400 when the inc_votes key value is invalid, i.e. not a number", () => {
             return request(app)
               .patch("/api/articles/1")
               .send({ inc_votes: "invalidValue" })
@@ -374,7 +374,7 @@ describe("/api", () => {
                 expect(body.msg).to.equal("Bad Request");
               });
           });
-          it("ERROR STATUS:400 when the request body contains further properties", () => {
+          it("ERROR STATUS:400 when the request body contains further properties that are not allowed", () => {
             return request(app)
               .patch("/api/articles/1")
               .send({ inc_votes: 1, otherProp: "notAllowed" })
@@ -616,7 +616,7 @@ describe("/api", () => {
             .send({ inc_votes: 1 })
             .expect(404)
             .then(({ body }) => {
-              expect(body.msg).to.equal("Page not Found");
+              expect(body.msg).to.equal("Not Found");
             });
         });
         it("ERROR STATUS:400 when an invalid comment_id is passed as a parametric endpoint", () => {
@@ -710,7 +710,7 @@ describe("/api", () => {
             .delete("/api/comments/999999999")
             .expect(404)
             .then(({ body }) => {
-              expect(body.msg).to.equal("Page not Found");
+              expect(body.msg).to.equal("Not Found");
             });
         });
         it('ERROR STATUS:400 when an invalid comment_id is passed as a parametric endpoint', () => {

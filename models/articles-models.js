@@ -24,7 +24,7 @@ exports.selectArticles = (article_id, sort_by, order, author, topic) => {
     })
     .then(articles => {
       if (!articles) {
-        return Promise.reject({ status: 404, msg: "Page not Found" });
+        return Promise.reject({ status: 404, msg: "Not Found" });
       } else if (articles.length === 0) {
         return Promise.reject({ status: 400, msg: "Bad Request" });
       } else {
@@ -40,7 +40,7 @@ exports.updateArticleByArticleId = (incrementer, article_id) => {
     .returning("*")
     .then(([updatedArticle]) => {
       if (!updatedArticle) {
-        return Promise.reject({ status: 404, msg: "Page not Found" });
+        return Promise.reject({ status: 404, msg: "Not Found" });
       } else {
         return this.selectArticles(updatedArticle.article_id);
       }

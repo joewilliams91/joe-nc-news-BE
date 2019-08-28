@@ -7,7 +7,7 @@ exports.selectUserByUsername = username => {
     .where("username", "=", username)
     .then(([user]) => {
       if (!user) {
-        return Promise.reject({ status: 404, msg: "Page not Found" });
+        return Promise.reject({ status: 404, msg: "Not Found" });
       } else {
         return user;
       }
