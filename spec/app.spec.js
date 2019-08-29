@@ -31,7 +31,7 @@ describe("/api", () => {
           .get("/api")
           .expect(200)
           .then(response => {
-            expect(JSON.parse(response.body.endpoints)).to.eql({
+            expect(response.body.endpoints).to.eql({
               "GET /api": {
                 description:
                   "serves up a json representation of all the available endpoints of the api"
@@ -151,9 +151,7 @@ describe("/api", () => {
             expect(response.headers["content-type"]).to.contain(
               "application/json"
             );
-            expect(
-              Object.keys(JSON.parse(response.body.endpoints))
-            ).to.have.length(10);
+            expect(Object.keys(response.body.endpoints)).to.have.length(10);
           });
       });
     });
