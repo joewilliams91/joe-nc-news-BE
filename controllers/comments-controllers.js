@@ -4,7 +4,12 @@ const {
 } = require("../models/comments-models");
 
 exports.patchCommentByCommentId = (req, res, next) => {
-  if (Object.keys(req.body).length > 1) {
+  if (
+    (Object.keys(req.body).length &&
+      !Object.keys(req.body).includes("inc_votes")) ||
+    (Object.keys(req.body).includes("inc_votes") &&
+      typeof req.body.inc_votes !== "number")
+  ) {
     next({ status: 400, msg: "Bad Request" });
   } else {
     const incrementer = +req.body.inc_votes;
@@ -13,9 +18,7 @@ exports.patchCommentByCommentId = (req, res, next) => {
       .then(comment => {
         res.status(200).send({ comment });
       })
-      .catch(err => {
-        next(err);
-      });
+      .catch(next);
   }
 };
 
@@ -23,9 +26,9 @@ exports.deleteCommentByCommentId = (req, res, next) => {
   const comment_id = req.params.comment_id;
   removeCommentByCommentId(comment_id)
     .then(deleteCount => {
-      res.sendStatus(204).send();
+      if (deleteCount) {
+        res.sendStatus(204).send();
+      }
     })
-    .catch(err => {
-      next(err);
-    });
+    .catch(next);
 };

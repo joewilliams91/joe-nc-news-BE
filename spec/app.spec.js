@@ -38,6 +38,7 @@ describe("/api", () => {
                   "description"
                 );
               }
+              expect(response.body.topics).to.have.length(3);
               expect(response.body.topics[0].description).to.equal(
                 "The man, the Mitch, the legend"
               );
@@ -132,28 +133,45 @@ describe("/api", () => {
               ).to.equal(2);
             });
         });
-        it("STATUS:200 and default sorts the article objects by created_by, in ascending order", () => {
+        it("STATUS:200 and returns an empty object when a valid topic/author, matching a topic/author in the database, is passed as a topic/author url query, but the chosen topic/author does not have any associated articles", () => {
           return request(app)
-            .get("/api/articles")
+            .get("/api/articles?topic=paper")
             .expect(200)
             .then(response => {
-              expect(response.body.articles).to.be.ascendingBy("created_at");
+              expect(response.body.articles).to.eql([]);
+            })
+            .then(() => {
+              return request(app)
+                .get("/api/articles?author=lurker")
+                .expect(200)
+                .then(response => {
+                  expect(response.body.articles).to.eql([]);
+                });
             });
         });
-        it("STATUS:200 and sorts the article objects in descending order if passed desc as a valid url order query", () => {
+
+        it("STATUS:200 and default sorts the article objects by created_by, in descending order", () => {
           return request(app)
-            .get("/api/articles?order=desc")
+            .get("/api/articles")
             .expect(200)
             .then(response => {
               expect(response.body.articles).to.be.descendingBy("created_at");
             });
         });
-        it("STATUS:200 and sorts the article objects according to a valid non-numerical sort_by url query", () => {
+        it("STATUS:200 and sorts the article objects in ascending order if passed asc as a valid url order query", () => {
           return request(app)
-            .get("/api/articles?sort_by=title")
+            .get("/api/articles?order=asc")
             .expect(200)
             .then(response => {
-              expect(response.body.articles).to.be.ascendingBy("title");
+              expect(response.body.articles).to.be.ascendingBy("created_at");
+            });
+        });
+        it("STATUS:200 and sorts the article objects according to a valid non-numerical sort_by url query", () => {
+          return request(app)
+            .get("/api/articles?sort_by=author")
+            .expect(200)
+            .then(response => {
+              expect(response.body.articles).to.be.descendingBy("author");
             });
         });
         it("STATUS:200 and sorts the article objects according to a valid numerical sort_by url query", () => {
@@ -161,7 +179,7 @@ describe("/api", () => {
             .get("/api/articles?sort_by=votes")
             .expect(200)
             .then(response => {
-              expect(response.body.articles).to.be.ascendingBy("votes");
+              expect(response.body.articles).to.be.descendingBy("votes");
             });
         });
         it("STATUS:200 and filters the article objects according to a valid author url query, if provided", () => {
@@ -188,6 +206,14 @@ describe("/api", () => {
               }
             });
         });
+        it("STATUS:200 and filters the article objects according to both topic and author queries, if both are provided", () => {
+          return request(app)
+            .get("/api/articles?topic=mitch&author=butter_bridge")
+            .expect(200)
+            .then(response => {
+              expect(response.body.articles).to.have.length(3);
+            });
+        });
         it("ERROR STATUS:400 when a valid value matching no columns is entered as a sort_by url query", () => {
           return request(app)
             .get("/api/articles?sort_by=notAColumn")
@@ -204,39 +230,24 @@ describe("/api", () => {
               expect(body.msg).to.equal("Bad Request");
             });
         });
-        it("ERROR STATUS:400 when a valid topic/author that does not match any topics in the database is passed as a topic/author url query", () => {
+        it("ERROR STATUS:404 when a valid topic/author that does not match any topics in the database is passed as a topic/author url query", () => {
           return request(app)
             .get("/api/articles?topic=notATopic")
-            .expect(400)
+            .expect(404)
             .then(({ body }) => {
-              expect(body.msg).to.equal("Bad Request");
+              expect(body.msg).to.equal("Not Found");
             })
             .then(() => {
               return request(app)
                 .get("/api/articles?author=notAnAuthor")
-                .expect(400)
+                .expect(404)
                 .then(({ body }) => {
-                  expect(body.msg).to.equal("Bad Request");
-                });
-            });
-        });
-        it("ERROR STATUS:400 when a valid topic/author, matching a topic/author in the database, is passed as a topic/author url query, but the chosen topic/author does not have any associated articles", () => {
-          return request(app)
-            .get("/api/articles?topic=paper")
-            .expect(400)
-            .then(({ body }) => {
-              expect(body.msg).to.equal("Bad Request");
-            })
-            .then(() => {
-              return request(app)
-                .get("/api/articles?author=lurker")
-                .expect(400)
-                .then(({ body }) => {
-                  expect(body.msg).to.equal("Bad Request");
+                  expect(body.msg).to.equal("Not Found");
                 });
             });
         });
       });
+
       describe("INVALID METHODS", () => {
         it("STATUS:405 when invalid methods are requested", () => {
           const invalidMethods = ["patch", "put", "delete", "post"];
@@ -314,8 +325,7 @@ describe("/api", () => {
                   "topic",
                   "body",
                   "created_at",
-                  "votes",
-                  "comment_count"
+                  "votes"
                 );
               });
           });
@@ -333,8 +343,43 @@ describe("/api", () => {
                   "topic",
                   "body",
                   "created_at",
-                  "votes",
-                  "comment_count"
+                  "votes"
+                );
+              });
+          });
+          it("STATUS:200 default increments the vote count by zero and returns the unchanged comment object when the request body does not contain an inc_votes key", () => {
+            return request(app)
+              .patch("/api/articles/1")
+              .send({})
+              .expect(200)
+              .then(response => {
+                expect(response.body.article.votes).to.equal(100);
+                expect(response.body.article).to.have.keys(
+                  "author",
+                  "article_id",
+                  "title",
+                  "topic",
+                  "body",
+                  "created_at",
+                  "votes"
+                );
+              });
+          });
+          it("STATUS:200 when the request body contains further properties", () => {
+            return request(app)
+              .patch("/api/articles/1")
+              .send({ inc_votes: 1, otherProp: "notAllowed" })
+              .expect(200)
+              .then(response => {
+                expect(response.body.article.votes).to.equal(101);
+                expect(response.body.article).to.have.keys(
+                  "author",
+                  "article_id",
+                  "title",
+                  "topic",
+                  "body",
+                  "created_at",
+                  "votes"
                 );
               });
           });
@@ -356,28 +401,11 @@ describe("/api", () => {
                 expect(body.msg).to.equal("Bad Request");
               });
           });
-          it("ERROR STATUS:400 when the request body does not contain an inc_votes key", () => {
-            return request(app)
-              .patch("/api/articles/1")
-              .send({})
-              .expect(400)
-              .then(({ body }) => {
-                expect(body.msg).to.equal("Bad Request");
-              });
-          });
+
           it("ERROR STATUS:400 when the inc_votes key value is invalid, i.e. not a number", () => {
             return request(app)
               .patch("/api/articles/1")
               .send({ inc_votes: "invalidValue" })
-              .expect(400)
-              .then(({ body }) => {
-                expect(body.msg).to.equal("Bad Request");
-              });
-          });
-          it("ERROR STATUS:400 when the request body contains further properties that are not allowed", () => {
-            return request(app)
-              .patch("/api/articles/1")
-              .send({ inc_votes: 1, otherProp: "notAllowed" })
               .expect(400)
               .then(({ body }) => {
                 expect(body.msg).to.equal("Bad Request");
@@ -507,36 +535,44 @@ describe("/api", () => {
                 expect(response.body.comments).to.have.length(13);
               });
           });
-          it("GET STATUS:200 and default sorts the array by the created_at column in ascending order", () => {
+          it("STATUS:200 and default sorts the array by the created_at column in descending order", () => {
             return request(app)
               .get("/api/articles/1/comments")
-              .expect(200)
-              .then(response => {
-                expect(response.body.comments).to.be.ascendingBy("created_at");
-              });
-          });
-          it("GET STATUS:200 and sorts the array in descending order if passed desc as a url order query", () => {
-            return request(app)
-              .get("/api/articles/1/comments?order=desc")
               .expect(200)
               .then(response => {
                 expect(response.body.comments).to.be.descendingBy("created_at");
               });
           });
-          it("GET STATUS:200 and sorts the array according to valid sort_by url query referring to a column containing non-numerical data", () => {
+          it("STATUS:200 and sorts the array in ascending order if passed desc as a url order query", () => {
+            return request(app)
+              .get("/api/articles/1/comments?order=asc")
+              .expect(200)
+              .then(response => {
+                expect(response.body.comments).to.be.ascendingBy("created_at");
+              });
+          });
+          it("STATUS:200 and sorts the array according to valid sort_by url query referring to a column containing non-numerical data", () => {
             return request(app)
               .get("/api/articles/1/comments?sort_by=author")
               .expect(200)
               .then(response => {
-                expect(response.body.comments).to.be.ascendingBy("author");
+                expect(response.body.comments).to.be.descendingBy("author");
               });
           });
-          it("GET STATUS:200 and sorts the array according to valid sort_by url query referring to a column containing numerical data", () => {
+          it("STATUS:200 and sorts the array according to valid sort_by url query referring to a column containing numerical data", () => {
             return request(app)
               .get("/api/articles/1/comments?sort_by=comment_id")
               .expect(200)
               .then(response => {
-                expect(response.body.comments).to.be.ascendingBy("comment_id");
+                expect(response.body.comments).to.be.descendingBy("comment_id");
+              });
+          });
+          it("STATUS:200 when a valid article_id with no associated comments is passed as a parametric endpoint", () => {
+            return request(app)
+              .get("/api/articles/2/comments")
+              .expect(200)
+              .then(response => {
+                expect(response.body.comments).to.eql([]);
               });
           });
           it("ERROR STATUS:404 when a valid, non-existent article_id is passed as the article_id parametric endpoint", () => {
@@ -544,7 +580,7 @@ describe("/api", () => {
               .get("/api/articles/9999999/comments")
               .expect(404)
               .then(({ body }) => {
-                expect(body.msg).to.equal("Page not Found");
+                expect(body.msg).to.equal("Not Found");
               });
           });
           it("ERROR STATUS:400 when an invalid article_id is passed as the article_id parametric endpoint", () => {
@@ -610,6 +646,40 @@ describe("/api", () => {
               expect(response.body.comment.article_id).to.equal(9);
             });
         });
+        it("STATUS:200 default increments the vote count by zero and returns the unchanged comment object when an empty request body is sent", () => {
+          return request(app)
+            .patch("/api/comments/1")
+            .send({})
+            .expect(200)
+            .then(response => {
+              expect(response.body.comment.votes).to.equal(16);
+              expect(response.body.comment).to.have.keys(
+                "comment_id",
+                "article_id",
+                "votes",
+                "created_at",
+                "author",
+                "body"
+              );
+            });
+        });
+        it("STATUS:200 when a request body containing additional properties is sent", () => {
+          return request(app)
+            .patch("/api/comments/1")
+            .send({ inc_votes: 1, anotherKey: "anotherKey" })
+            .expect(200)
+            .then(response => {
+              expect(response.body.comment.votes).to.equal(17);
+              expect(response.body.comment).to.have.keys(
+                "comment_id",
+                "article_id",
+                "votes",
+                "created_at",
+                "author",
+                "body"
+              );
+            });
+        });
         it("ERROR STATUS:404 when a valid comment_id matching no comments in the database is passed as a parametric endpoint", () => {
           return request(app)
             .patch("/api/comments/999999999")
@@ -623,15 +693,6 @@ describe("/api", () => {
           return request(app)
             .patch("/api/comments/notAComment")
             .send({ inc_votes: 1 })
-            .expect(400)
-            .then(({ body }) => {
-              expect(body.msg).to.equal("Bad Request");
-            });
-        });
-        it("ERROR STATUS:400 when an empty request body is sent", () => {
-          return request(app)
-            .patch("/api/comments/1")
-            .send({})
             .expect(400)
             .then(({ body }) => {
               expect(body.msg).to.equal("Bad Request");
@@ -653,15 +714,6 @@ describe("/api", () => {
                 .then(({ body }) => {
                   expect(body.msg).to.equal("Bad Request");
                 });
-            });
-        });
-        it("ERROR STATUS:400 when a request body containing additional properties is sent", () => {
-          return request(app)
-            .patch("/api/comments/1")
-            .send({ inc_votes: 1, anotherKey: "invalid" })
-            .expect(400)
-            .then(({ body }) => {
-              expect(body.msg).to.equal("Bad Request");
             });
         });
       });
@@ -713,14 +765,14 @@ describe("/api", () => {
               expect(body.msg).to.equal("Not Found");
             });
         });
-        it('ERROR STATUS:400 when an invalid comment_id is passed as a parametric endpoint', () => {
+        it("ERROR STATUS:400 when an invalid comment_id is passed as a parametric endpoint", () => {
           return request(app)
             .delete("/api/comments/invalidComment")
             .expect(400)
             .then(({ body }) => {
               expect(body.msg).to.equal("Bad Request");
             });
-        })
+        });
       });
       describe("INVALID METHODS", () => {
         it("STATUS CODE:405 when invalid methods are requested", () => {

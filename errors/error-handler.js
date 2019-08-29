@@ -13,13 +13,15 @@ exports.handlePsqlErrors = (err, req, res, next) => {
     res.status(400).send({ msg: "Bad Request" });
   } else if (psql422ErrorCodes.includes(err.code)) {
     res.status(422).send({ msg: "Unprocessable Entity" });
+  } else {
+    next(err);
   }
-};
-
-exports.send405Error = (req, res, next) => {
-  res.status(405).send({ msg: "Method not Allowed" });
 };
 
 exports.handleServerErrors = (err, req, res, next) => {
   res.status(500).send({ msg: "Internal Server Error" });
+};
+
+exports.send405Error = (req, res, next) => {
+  res.status(405).send({ msg: "Method not Allowed" });
 };
