@@ -24,6 +24,154 @@ describe("/api", () => {
         });
     });
   });
+  describe("/", () => {
+    describe("GET", () => {
+      it("STATUS:200 and returns an object containing a key of endpoints, which includes an object containing all endpoints", () => {
+        return request(app)
+          .get("/api")
+          .expect(200)
+          .then(response => {
+            expect(JSON.parse(response.body.endpoints)).to.eql({
+              "GET /api": {
+                description:
+                  "serves up a json representation of all the available endpoints of the api"
+              },
+              "GET /api/topics": {
+                description: "serves an array of all topics",
+                queries: [],
+                exampleResponse: {
+                  topics: [{ slug: "football", description: "Footie!" }]
+                }
+              },
+              "GET /api/users/:username": {
+                description: "serves an object of a specified user",
+                queries: [],
+                exampleResponse: {
+                  user: {
+                    username: "butter_bridge",
+                    avatar_url:
+                      "https://www.healthytherapies.com/wp-content/uploads/2016/06/Lime3.jpg",
+                    name: "jonny"
+                  }
+                }
+              },
+              "GET /api/articles/:article_id": {
+                description: "serves an object of a specified article",
+                queries: [],
+                exampleResponse: {
+                  article: {
+                    author: "butter_bridge",
+                    article_id: 1,
+                    title: "Living in the shadow of a great man",
+                    topic: "mitch",
+                    body: "I find this existence challenging",
+                    created_at: "2017-11-22 12:36:03.389+00",
+                    votes: 100,
+                    comment_count: 13
+                  }
+                }
+              },
+              "PATCH /api/articles/:article_id": {
+                description: "serves an updated article",
+                queries: [],
+                exampleResponse: {
+                  article: {
+                    author: "butter_bridge",
+                    article_id: 1,
+                    title: "Living in the shadow of a great man",
+                    topic: "mitch",
+                    body: "I find this existence challenging",
+                    created_at: "2017-11-22 12:36:03.389+00",
+                    votes: 101,
+                    comment_count: 13
+                  }
+                }
+              },
+              "POST /api/articles/:article_id/comments": {
+                description: "serves a posted comment",
+                queries: [],
+                exampleResponse: {
+                  comment: {
+                    comment_id: 19,
+                    author: "icellusedkars",
+                    article_id: 1,
+                    votes: 0,
+                    created_at: "2017-11-22 12:36:03.389+00",
+                    body: "Love it"
+                  }
+                }
+              },
+              "GET /api/articles/:article_id/comments": {
+                description: "serves a specified comment",
+                queries: ["sort_by", "order"],
+                exampleResponse: {
+                  comment: {
+                    comment_id: 19,
+                    author: "icellusedkars",
+                    article_id: 1,
+                    votes: 0,
+                    created_at: "2017-11-22 12:36:03.389+00",
+                    body: "Love it"
+                  }
+                }
+              },
+              "GET /api/articles": {
+                description: "serves an array of all topics",
+                queries: ["author", "topic", "sort_by", "order"],
+                exampleResponse: {
+                  articles: [
+                    {
+                      title: "Seafood substitutions are increasing",
+                      topic: "cooking",
+                      author: "weegembump",
+                      body: "Text from the article..",
+                      created_at: 1527695953341
+                    }
+                  ]
+                }
+              },
+              "PATCH /api/comments/:comment_id": {
+                description: "serves an updated comment",
+                queries: [],
+                exampleResponse: {
+                  comment_id: 20,
+                  article_id: 9,
+                  votes: 17,
+                  created_at: "2017-11-22 12:36:03.389+00",
+                  author: "butter_bridge",
+                  body: "Some body"
+                }
+              },
+              "DELETE /api/comments/:comment_id": {
+                description: "returns a 204 message and no content",
+                queries: [],
+                exampleResponse: ""
+              }
+            });
+            expect(response.headers["content-type"]).to.contain(
+              "application/json"
+            );
+            expect(
+              Object.keys(JSON.parse(response.body.endpoints))
+            ).to.have.length(10);
+          });
+      });
+    });
+    describe("INVALID METHODS", () => {
+      it("STATUS CODE:405 when invalid methods are requested", () => {
+        const invalidMethods = ["delete", "patch", "put", "post"];
+        const methodPromises = invalidMethods.map(method => {
+          return request(app)
+            [method]("/api")
+            .expect(405)
+            .then(({ body }) => {
+              expect(body.msg).to.equal("Method not Allowed");
+            });
+        });
+        return Promise.all(methodPromises);
+      });
+    });
+  });
   describe("/topics", () => {
     describe("/", () => {
       describe("GET", () => {
@@ -311,7 +459,7 @@ describe("/api", () => {
           });
         });
         describe("PATCH", () => {
-          it("PATCH status: 200 and returns a successfully updated article when passed a valid request body containing an amount of votes with which to update the specified article's vote count", () => {
+          it("STATUS:200 and returns a successfully updated article when passed a valid request body containing an amount of votes with which to update the specified article's vote count", () => {
             return request(app)
               .patch("/api/articles/1")
               .send({ inc_votes: 1 })
@@ -329,7 +477,7 @@ describe("/api", () => {
                 );
               });
           });
-          it("PATCH status: 200 and returns a successfully updated article when passed a valid request body containing a negative amount of votes with which to update the specified article's vote count", () => {
+          it("STATUS:200 also works for negative number values", () => {
             return request(app)
               .patch("/api/articles/1")
               .send({ inc_votes: -1 })
@@ -347,7 +495,7 @@ describe("/api", () => {
                 );
               });
           });
-          it("STATUS:200 default increments the vote count by zero and returns the unchanged comment object when the request body does not contain an inc_votes key", () => {
+          it("STATUS:200 default increments the vote count by zero and returns the unchanged comment object when the request body does not contain any inc_votes key", () => {
             return request(app)
               .patch("/api/articles/1")
               .send({})
@@ -365,10 +513,28 @@ describe("/api", () => {
                 );
               });
           });
-          it("STATUS:200 when the request body contains further properties", () => {
+          it("STATUS:200 and ignores any additional keys, default incrementing the votes by 0 when the request body does not contain any inc_votes key", () => {
             return request(app)
               .patch("/api/articles/1")
-              .send({ inc_votes: 1, otherProp: "notAllowed" })
+              .send({ anotherKey: 1 })
+              .expect(200)
+              .then(response => {
+                expect(response.body.article.votes).to.equal(100);
+                expect(response.body.article).to.have.keys(
+                  "author",
+                  "article_id",
+                  "title",
+                  "topic",
+                  "body",
+                  "created_at",
+                  "votes"
+                );
+              });
+          });
+          it("STATUS:200 ignores further properties and increments the votes by the specified inc_votes integer when an inc_votes key is included in the request body", () => {
+            return request(app)
+              .patch("/api/articles/1")
+              .send({ inc_votes: 1, otherKey: "otherVal" })
               .expect(200)
               .then(response => {
                 expect(response.body.article.votes).to.equal(101);
@@ -646,7 +812,25 @@ describe("/api", () => {
               expect(response.body.comment.article_id).to.equal(9);
             });
         });
-        it("STATUS:200 default increments the vote count by zero and returns the unchanged comment object when an empty request body is sent", () => {
+        it("STATUS:200 and works for negative inc_votes values", () => {
+          return request(app)
+            .patch("/api/comments/1")
+            .send({ inc_votes: -1 })
+            .expect(200)
+            .then(response => {
+              expect(response.body.comment.votes).to.equal(15);
+              expect(response.body.comment).to.have.keys(
+                "comment_id",
+                "article_id",
+                "votes",
+                "created_at",
+                "author",
+                "body"
+              );
+              expect(response.body.comment.article_id).to.equal(9);
+            });
+        });
+        it("STATUS:200 default increments the vote count by zero and returns the unchanged comment object when the request body does not contain an inc-votes key", () => {
           return request(app)
             .patch("/api/comments/1")
             .send({})
@@ -663,7 +847,24 @@ describe("/api", () => {
               );
             });
         });
-        it("STATUS:200 when a request body containing additional properties is sent", () => {
+        it("STATUS:200 and ignores any additional keys, default incrementing the comment by 0 if the inc_votes key is not provided and returning the object", () => {
+          return request(app)
+            .patch("/api/comments/1")
+            .send({ notAValidKey: 1 })
+            .expect(200)
+            .then(response => {
+              expect(response.body.comment.votes).to.equal(16);
+              expect(response.body.comment).to.have.keys(
+                "comment_id",
+                "article_id",
+                "votes",
+                "created_at",
+                "author",
+                "body"
+              );
+            });
+        });
+        it("STATUS:200 and ignores any additional properties, incrementing the the comment votes by the inc_votes value and returning the updated object", () => {
           return request(app)
             .patch("/api/comments/1")
             .send({ inc_votes: 1, anotherKey: "anotherKey" })
@@ -698,26 +899,16 @@ describe("/api", () => {
               expect(body.msg).to.equal("Bad Request");
             });
         });
-        it("ERROR STATUS:400 when a request body containing an invalid key or value is sent", () => {
+        it("ERROR STATUS:400 when an inc_votes key containing an invalid value is passed", () => {
           return request(app)
             .patch("/api/comments/1")
-            .send({ notAValidKey: 1 })
+            .send({ inc_votes: "notANumber" })
             .expect(400)
             .then(({ body }) => {
               expect(body.msg).to.equal("Bad Request");
-            })
-            .then(() => {
-              return request(app)
-                .patch("/api/comments/1")
-                .send({ inc_votes: "notANumber" })
-                .expect(400)
-                .then(({ body }) => {
-                  expect(body.msg).to.equal("Bad Request");
-                });
             });
         });
       });
-
       describe("DELETE", () => {
         it("STATUS CODE:204 no content for successful deletion, which also ensures deletion is accounted for at other endpoints", () => {
           return request(app)
