@@ -2,8 +2,20 @@ const connection = require("../db/connection");
 const { checkTopicExists } = require("../models/topics-models");
 const { selectUserByUsername } = require("../models/users-models");
 
-exports.selectArticles = (article_id, sort_by, order, author, topic) => {
-  if (order && !/(de|a)sc/.test(order)) {
+exports.selectArticles = (
+  article_id,
+  sort_by,
+  order,
+  author,
+  topic,
+  limit,
+  page
+) => {
+  if (
+    (order && !/(de|a)sc/.test(order)) ||
+    (limit && (limit < 0 || isNaN(+limit))) ||
+    (page && (page < 0 || isNaN(+page)))
+  ) {
     return Promise.reject({ status: 400, msg: "Bad Request" });
   } else {
     return connection("articles")
@@ -19,6 +31,8 @@ exports.selectArticles = (article_id, sort_by, order, author, topic) => {
       .leftJoin("comments", "articles.article_id", "comments.article_id")
       .groupBy("articles.article_id")
       .orderBy(sort_by || "created_at", order || "desc")
+      .limit(limit || 10)
+      .offset((page - 1) * (limit || 10) || 0)
       .modify(query => {
         if (article_id) {
           query.where({ "articles.article_id": article_id }).first();
@@ -53,10 +67,27 @@ exports.selectArticles = (article_id, sort_by, order, author, topic) => {
           ]).then(([articles]) => {
             return articles;
           });
+        } else {
+          return articles;
         }
-        return articles;
       });
   }
+};
+
+exports.getTotalCount = (author, topic) => {
+  return connection("articles")
+    .count("articles.article_id as total_count")
+    .modify(query => {
+      if (author) {
+        query.where({ "articles.author": author });
+      }
+      if (topic) {
+        query.where({ "articles.topic": topic });
+      }
+    })
+    .then(count => {
+      return count;
+    });
 };
 
 exports.checkArticleExists = article_id => {

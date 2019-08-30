@@ -36,19 +36,36 @@ exports.insertCommentByArticleId = (author, body, article_id) => {
     });
 };
 
-exports.selectCommentsByArticleId = (article_id, sort_by, order) => {
-  if (order && !/(de|a)sc/.test(order)) {
+exports.selectCommentsByArticleId = (
+  article_id,
+  sort_by,
+  order,
+  limit,
+  page
+) => {
+  if (
+    (order && !/(de|a)sc/.test(order)) ||
+    (limit && (limit < 0 || isNaN(+limit))) ||
+    (page && (page < 0 || isNaN(+page)))
+  ) {
     return Promise.reject({ status: 400, msg: "Bad Request" });
   } else {
     return connection("comments")
       .select("comment_id", "author", "votes", "created_at", "body")
       .where({ article_id: article_id })
       .orderBy(sort_by || "created_at", order || "desc")
+      .offset((page - 1) * (limit || 10) || 0)
+      .limit(limit || 10)
       .returning("*")
       .then(comments => {
         return Promise.all([comments, checkArticleExists(article_id)]);
       })
       .then(([comments]) => {
+        if (!comments.length) {
+          if (page && page > 1) {
+            return Promise.reject({ status: 404, msg: "Not Found" });
+          }
+        }
         return comments;
       });
   }

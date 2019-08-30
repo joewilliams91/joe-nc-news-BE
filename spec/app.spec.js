@@ -255,7 +255,7 @@ describe("/api", () => {
   describe("/articles", () => {
     describe("/", () => {
       describe("GET", () => {
-        it("STATUS:200 and returns an array of article objects", () => {
+        it("STATUS:200 and returns an object with an articles key, containing an array of article objects, each of which possesses the correct properties, and a total_count key, which counts the total number of articles, ignoring page limit", () => {
           return request(app)
             .get("/api/articles")
             .expect(200)
@@ -271,15 +271,58 @@ describe("/api", () => {
                   "comment_count"
                 );
               }
-              expect(response.body.articles).to.have.length(12);
-              expect(
-                +response.body.articles.find(
-                  article => article.article_id === 9
-                ).comment_count
-              ).to.equal(2);
+              expect(+response.body.total_count).to.equal(12);
             });
         });
-        it("STATUS:200 and returns an empty object when a valid topic/author, matching a topic/author in the database, is passed as a topic/author url query, but the chosen topic/author does not have any associated articles", () => {
+        it("STATUS 200 and default limits the number of responses to 10", () => {
+          return request(app)
+            .get("/api/articles")
+            .expect(200)
+            .then(response => {
+              expect(response.body.articles).to.have.length(10);
+              expect(+response.body.total_count).to.equal(12);
+            });
+        });
+        it("STATUS 200 and limits the number of responses according to a valid url limit query", () => {
+          return request(app)
+            .get("/api/articles?limit=5")
+            .expect(200)
+            .then(response => {
+              expect(response.body.articles).to.have.length(5);
+              expect(+response.body.total_count).to.equal(12);
+            });
+        });
+        it("STATUS:200 and default starts at the first page if no p url query is provided", () => {
+          return request(app)
+            .get("/api/articles?limit=5&sort_by=article_id&order=asc")
+            .expect(200)
+            .then(response => {
+              expect(response.body.articles[0].article_id).to.equal(1);
+              expect(response.body.articles[4].article_id).to.equal(5);
+              expect(response.body.articles).to.have.length(5);
+              expect(+response.body.total_count).to.equal(12);
+            });
+        });
+        it("STATUS:200 and starts at the page requested as a valid url p query, calculated using the limit query", () => {
+          return request(app)
+            .get("/api/articles?limit=5&sort_by=article_id&order=asc&p=2")
+            .expect(200)
+            .then(response => {
+              expect(response.body.articles[0].article_id).to.equal(6);
+              expect(response.body.articles[4].article_id).to.equal(10);
+              expect(+response.body.total_count).to.equal(12);
+            });
+        });
+        it("STATUS:200 and starts at the page requested as a valid URL p query, which is calculated according to the default page limit of 10 if no limit query is provided", () => {
+          return request(app)
+            .get("/api/articles?sort_by=article_id&order=asc&p=2")
+            .expect(200)
+            .then(response => {
+              expect(response.body.articles[0].article_id).to.equal(11);
+              expect(+response.body.total_count).to.equal(12);
+            });
+        });
+        it("STATUS:200 and returns an empty object when a valid topic/author, matching a topic/author in the database, but not associated with any articles, is passed as a topic/author url query", () => {
           return request(app)
             .get("/api/articles?topic=paper")
             .expect(200)
@@ -328,7 +371,7 @@ describe("/api", () => {
               expect(response.body.articles).to.be.descendingBy("votes");
             });
         });
-        it("STATUS:200 and filters the article objects according to a valid author url query, if provided", () => {
+        it("STATUS:200 and filters the article objects according to a valid author url query, if provided, with the filter also affecting the total_count property on the response body", () => {
           return request(app)
             .get("/api/articles?author=icellusedkars")
             .expect(200)
@@ -339,25 +382,63 @@ describe("/api", () => {
                   "icellusedkars"
                 );
               }
+              expect(+response.body.total_count).to.equal(6);
             });
         });
-        it("STATUS:200 and filters the article objects according to a valid topic url query, if provided", () => {
+        it("STATUS:200 filtering the article objects according to a valid author url query, if provided, and limiting the number of results according to a valid url limit query, with the filter also affecting the total_count property on the response body, which is not in turn affected by the limit query", () => {
           return request(app)
-            .get("/api/articles?topic=cats")
+            .get("/api/articles?author=icellusedkars&limit=5")
             .expect(200)
             .then(response => {
-              expect(response.body.articles).to.have.length(1);
+              expect(response.body.articles).to.have.length(5);
               for (let i = 0; i < response.body.articles.length; i++) {
-                expect(response.body.articles[i].topic).to.equal("cats");
+                expect(response.body.articles[i].author).to.equal(
+                  "icellusedkars"
+                );
               }
+              expect(+response.body.total_count).to.equal(6);
             });
         });
-        it("STATUS:200 and filters the article objects according to both topic and author queries, if both are provided", () => {
+        it("STATUS:200 and filters the article objects according to a valid topic url query, if provided, with the filter also affecting the total_count property on the response body", () => {
+          return request(app)
+            .get("/api/articles?topic=mitch&limit=20")
+            .expect(200)
+            .then(response => {
+              expect(response.body.articles).to.have.length(11);
+              for (let i = 0; i < response.body.articles.length; i++) {
+                expect(response.body.articles[i].topic).to.equal("mitch");
+              }
+              expect(+response.body.total_count).to.equal(11);
+            });
+        });
+        it("STATUS:200 filtering the article objects according to a valid author url query, if provided, and limiting the number of results according to a valid url limit query, with the filter also affecting the total_count property on the response body, which is not in turn affected by the limit query", () => {
+          return request(app)
+            .get("/api/articles?topic=mitch&limit=5")
+            .expect(200)
+            .then(response => {
+              expect(response.body.articles).to.have.length(5);
+              for (let i = 0; i < response.body.articles.length; i++) {
+                expect(response.body.articles[i].topic).to.equal("mitch");
+              }
+              expect(+response.body.total_count).to.equal(11);
+            });
+        });
+        it("STATUS:200 and filters the article objects according to both topic and author queries, if both are provided, also providing a total_count corresponding with the filtering", () => {
           return request(app)
             .get("/api/articles?topic=mitch&author=butter_bridge")
             .expect(200)
             .then(response => {
               expect(response.body.articles).to.have.length(3);
+              expect(+response.body.total_count).to.equal(3);
+            });
+        });
+        it("STATUS:200 and filters the article objects according to both topic and author queries, limiting the results if a url limit query is passed, also providing a total_count corresponding with the filtering, that is not affected by any page limit", () => {
+          return request(app)
+            .get("/api/articles?topic=mitch&author=butter_bridge&limit=2")
+            .expect(200)
+            .then(response => {
+              expect(response.body.articles).to.have.length(2);
+              expect(+response.body.total_count).to.equal(3);
             });
         });
         it("ERROR STATUS:400 when a valid value matching no columns is entered as a sort_by url query", () => {
@@ -374,6 +455,46 @@ describe("/api", () => {
             .expect(400)
             .then(({ body }) => {
               expect(body.msg).to.equal("Bad Request");
+            });
+        });
+        it("ERROR STATUS:400 when an invalid limit query is entered", () => {
+          return request(app)
+            .get("/api/articles?limit=invalid")
+            .expect(400)
+            .then(({ body }) => {
+              expect(body.msg).to.equal("Bad Request");
+            });
+        });
+        it("ERROR STATUS:400 when a valid but negative limit query is entered", () => {
+          return request(app)
+            .get("/api/articles?limit=-1")
+            .expect(400)
+            .then(({ body }) => {
+              expect(body.msg).to.equal("Bad Request");
+            });
+        });
+        it("ERROR STATUS:400 when an invalid p query is entered", () => {
+          return request(app)
+            .get("/api/articles?p=invalid")
+            .expect(400)
+            .then(({ body }) => {
+              expect(body.msg).to.equal("Bad Request");
+            });
+        });
+        it("ERROR STATUS:400 when an valid but negative p query is entered", () => {
+          return request(app)
+            .get("/api/articles?p=-1")
+            .expect(400)
+            .then(({ body }) => {
+              expect(body.msg).to.equal("Bad Request");
+            });
+        });
+        it("ERROR STATUS:404 when an valid p query is entered that is out of the range of the total number of results", () => {
+          return request(app)
+            .get("/api/articles?p=999")
+            .expect(404)
+            .then(({ body }) => {
+              expect(body.msg).to.equal("Not Found");
             });
         });
         it("ERROR STATUS:404 when a valid topic/author that does not match any topics in the database is passed as a topic/author url query", () => {
@@ -696,9 +817,49 @@ describe("/api", () => {
                     "body"
                   );
                 }
-                expect(response.body.comments).to.have.length(13);
               });
           });
+          it("STATUS:200 and default limits the number of responses to 10, if no url limit query is entered", () => {
+            return request(app)
+              .get("/api/articles/1/comments")
+              .expect(200)
+              .then(response => {
+                expect(response.body.comments).to.have.length(10);
+              });
+          });
+          it("STATUS:200 and limits the number of responses according to a valid url limit query", () => {
+            return request(app)
+              .get("/api/articles/1/comments?limit=5")
+              .expect(200)
+              .then(response => {
+                expect(response.body.comments).to.have.length(5);
+              });
+          });
+          it("STATUS:200 and default starts at page 1 if no url p query is entered", () => {
+            return request(app)
+              .get(
+                "/api/articles/1/comments?limit=5&sort_by=comment_id&order=asc"
+              )
+              .expect(200)
+              .then(response => {
+                expect(response.body.comments).to.have.length(5);
+                expect(response.body.comments[0].comment_id).to.equal(2);
+                expect(response.body.comments[4].comment_id).to.equal(6);
+              });
+          });
+          it("STATUS:200 and starts at the specified page passed if a valid url p query", () => {
+            return request(app)
+              .get(
+                "/api/articles/1/comments?limit=5&p=2&sort_by=comment_id&order=asc"
+              )
+              .expect(200)
+              .then(response => {
+                expect(response.body.comments).to.have.length(5);
+                expect(response.body.comments[0].comment_id).to.equal(7);
+                expect(response.body.comments[4].comment_id).to.equal(11);
+              });
+          });
+
           it("STATUS:200 and default sorts the array by the created_at column in descending order", () => {
             return request(app)
               .get("/api/articles/1/comments")
@@ -745,6 +906,46 @@ describe("/api", () => {
               .expect(404)
               .then(({ body }) => {
                 expect(body.msg).to.equal("Not Found");
+              });
+          });
+          it("ERROR STATUS:404 when the page query exceeds the number of comments, i.e. the model returns an empty array, but for reasons other than there being no comments for that particular article (which would also return an empty array, albeit a empty array we want to return), and instead because the page query exceeds the number of results", () => {
+            return request(app)
+              .get("/api/articles/1/comments?p=9999999")
+              .expect(404)
+              .then(({ body }) => {
+                expect(body.msg).to.equal("Not Found");
+              });
+          });
+          it("ERROR STATUS:400 when an invalid value is passed as a url limit query", () => {
+            return request(app)
+              .get("/api/articles/1/comments?limit=invalid")
+              .expect(400)
+              .then(({ body }) => {
+                expect(body.msg).to.equal("Bad Request");
+              });
+          });
+          it("ERROR STATUS:400 when a negative value is passed as a url limit query", () => {
+            return request(app)
+              .get("/api/articles/1/comments?limit=-1")
+              .expect(400)
+              .then(({ body }) => {
+                expect(body.msg).to.equal("Bad Request");
+              });
+          });
+          it("ERROR STATUS:400 when an invalid value is passed as a url page query", () => {
+            return request(app)
+              .get("/api/articles/1/comments?p=invalid")
+              .expect(400)
+              .then(({ body }) => {
+                expect(body.msg).to.equal("Bad Request");
+              });
+          });
+          it("ERROR STATUS:400 when a negative value is passed as a url page query", () => {
+            return request(app)
+              .get("/api/articles/1/comments?p=-1")
+              .expect(400)
+              .then(({ body }) => {
+                expect(body.msg).to.equal("Bad Request");
               });
           });
           it("ERROR STATUS:400 when an invalid article_id is passed as the article_id parametric endpoint", () => {

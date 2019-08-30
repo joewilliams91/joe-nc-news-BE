@@ -1,6 +1,7 @@
 const {
   updateArticleByArticleId,
-  selectArticles
+  selectArticles,
+  getTotalCount
 } = require("../models/articles-models");
 
 const {
@@ -44,8 +45,8 @@ exports.postCommentByArticleId = (req, res, next) => {
 
 exports.getCommentsByArticleId = (req, res, next) => {
   const article_id = req.params.article_id;
-  const { sort_by, order } = req.query;
-  selectCommentsByArticleId(article_id, sort_by, order)
+  const { sort_by, order, limit, p } = req.query;
+  selectCommentsByArticleId(article_id, sort_by, order, limit, p)
     .then(comments => {
       res.status(200).send({ comments });
     })
@@ -53,10 +54,16 @@ exports.getCommentsByArticleId = (req, res, next) => {
 };
 
 exports.getArticles = (req, res, next) => {
-  const { sort_by, order, author, topic } = req.query;
-  selectArticles(null, sort_by, order, author, topic)
-    .then(articles => {
-      res.status(200).send({ articles });
+  const { sort_by, order, author, topic, limit, p } = req.query;
+  return Promise.all([
+    selectArticles(null, sort_by, order, author, topic, limit, p),
+    getTotalCount(author, topic)
+  ])
+    .then(([articles, [{ total_count }]]) => {
+      if (p && (p - 1) * (limit || 10) + 1 > total_count) {
+        next({ status: 404, msg: "Not Found" });
+      }
+      res.status(200).send({ articles, total_count });
     })
     .catch(next);
 };
