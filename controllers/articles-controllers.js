@@ -1,7 +1,8 @@
 const {
   updateArticleByArticleId,
   selectArticles,
-  getTotalCount
+  getTotalCount,
+  insertArticle
 } = require("../models/articles-models");
 
 const {
@@ -32,15 +33,13 @@ exports.postCommentByArticleId = (req, res, next) => {
   const { username, body } = req.body;
   const { article_id } = req.params;
 
-  if (typeof body !== "string") {
-    next({ status: 400, msg: "Bad Request" });
-  } else {
+  
     insertCommentByArticleId(username, body, article_id)
       .then(comment => {
         res.status(201).send({ comment });
       })
       .catch(next);
-  }
+  
 };
 
 exports.getCommentsByArticleId = (req, res, next) => {
@@ -64,6 +63,15 @@ exports.getArticles = (req, res, next) => {
         next({ status: 404, msg: "Not Found" });
       }
       res.status(200).send({ articles, total_count });
+    })
+    .catch(next);
+};
+
+exports.postArticle = (req, res, next) => {
+  const { title, body, topic, author, votes } = req.body;
+  insertArticle(title, body, topic, author, votes)
+    .then(article => {
+      res.status(201).send({ article });
     })
     .catch(next);
 };

@@ -27,13 +27,17 @@ exports.removeCommentByCommentId = comment_id => {
 };
 
 exports.insertCommentByArticleId = (author, body, article_id) => {
-  const newComment = { author, body, article_id };
-  return connection("comments")
-    .insert(newComment)
-    .returning("*")
-    .then(([addedComment]) => {
-      return addedComment;
-    });
+  if (typeof body !== "string" || typeof author !== "string") {
+    return Promise.reject({ status: 400, msg: "Bad Request" });
+  } else {
+    const newComment = { author, body, article_id };
+    return connection("comments")
+      .insert(newComment)
+      .returning("*")
+      .then(([addedComment]) => {
+        return addedComment;
+      });
+  }
 };
 
 exports.selectCommentsByArticleId = (

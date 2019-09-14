@@ -116,3 +116,22 @@ exports.updateArticleByArticleId = (incrementer, article_id) => {
       }
     });
 };
+
+exports.insertArticle = (title, body, topic, author, votes) => {
+  const newArticle = { title, body, topic, author, votes };
+  if (
+    typeof title !== "string" ||
+    typeof body !== "string" ||
+    typeof topic !== "string" ||
+    typeof author !== "string" ||
+    (votes && typeof votes !== "number")
+  ) {
+    return Promise.reject({ status: 400, msg: "Bad Request" });
+  }
+  return connection("articles")
+    .insert(newArticle)
+    .returning("*")
+    .then(([addedArticle]) => {
+      return addedArticle;
+    });
+};

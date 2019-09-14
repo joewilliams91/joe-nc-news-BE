@@ -514,10 +514,102 @@ describe("/api", () => {
             });
         });
       });
+      describe("POST", () => {
+        it("STATUS:201 and returns the successfully posted article object", () => {
+          return request(app)
+            .post("/api/articles")
+            .send({
+              title: "test article",
+              body: "test article body",
+              topic: "mitch",
+              author: "butter_bridge"
+            })
+            .expect(201)
+            .then(response => {
+              expect(response.body.article).to.have.keys(
+                "article_id",
+                "title",
+                "body",
+                "votes",
+                "topic",
+                "author",
+                "created_at"
+              );
+              expect(response.body.article.article_id).to.equal(13);
+              expect(response.body.article.title).to.equal("test article");
+              expect(response.body.article.votes).to.equal(0);
+            });
+        });
+        it("ERROR STATUS:400 when an empty post body is sent", () => {
+          return request(app)
+            .post("/api/articles")
+            .send({})
+            .expect(400)
+            .then(({ body }) => {
+              expect(body.msg).to.equal("Bad Request");
+            });
+        });
+        it("ERROR STATUS:400 when an incomplete post body is sent", () => {
+          return request(app)
+            .post("/api/articles")
+            .send({
+              body: "test article body",
+              topic: "non-existent topic",
+              author: "butter_bridge"
+            })
+            .expect(400)
+            .then(({ body }) => {
+              expect(body.msg).to.equal("Bad Request");
+            });
+        });
+        it("ERROR STATUS:400 when a post body is sent with an invalid property value", () => {
+          return request(app)
+            .post("/api/articles")
+            .send({
+              title: [{ 1: 1 }, 2, 3, 4, { 5: 5 }],
+              body: "test article body",
+              topic: "mitch",
+              votes: "not a number",
+              author: "butter_bridge"
+            })
+            .expect(400)
+            .then(({ body }) => {
+              expect(body.msg).to.equal("Bad Request");
+            });
+        });
+        it("ERROR STATUS:422 when the post body contains a valid topic that does not exist in the database", () => {
+          return request(app)
+            .post("/api/articles")
+            .send({
+              title: "test article",
+              body: "test article body",
+              topic: "non-existent topic",
+              author: "butter_bridge"
+            })
+            .expect(422)
+            .then(({ body }) => {
+              expect(body.msg).to.equal("Unprocessable Entity");
+            });
+        });
+        it("ERROR STATUS:422 when the post body contains a valid username that does not exist in the database", () => {
+          return request(app)
+            .post("/api/articles")
+            .send({
+              title: "test article",
+              body: "test article body",
+              topic: "mitch",
+              author: "non-existent user"
+            })
+            .expect(422)
+            .then(({ body }) => {
+              expect(body.msg).to.equal("Unprocessable Entity");
+            });
+        });
+      });
 
       describe("INVALID METHODS", () => {
         it("STATUS:405 when invalid methods are requested", () => {
-          const invalidMethods = ["patch", "put", "delete", "post"];
+          const invalidMethods = ["patch", "put", "delete"];
           const methodPromises = invalidMethods.map(method => {
             return request(app)
               [method]("/api/articles")
@@ -735,15 +827,6 @@ describe("/api", () => {
                 expect(response.body.comment.comment_id).to.equal(19);
               });
           });
-          it("ERROR STATUS:422 when a valid, non-existent article_id is passed as the article_id parametric endpoint", () => {
-            return request(app)
-              .post("/api/articles/9999999/comments")
-              .send({ username: "icellusedkars", body: "Love it" })
-              .expect(422)
-              .then(({ body }) => {
-                expect(body.msg).to.equal("Unprocessable Entity");
-              });
-          });
           it("ERROR STATUS:400 when an invalid article_id is passed as the article_id parametric endpoint", () => {
             return request(app)
               .post("/api/articles/invalidId/comments")
@@ -780,15 +863,6 @@ describe("/api", () => {
                   });
               });
           });
-          it("ERROR STATUS:422 when a post request is made containing a valid username which does not match any users", () => {
-            return request(app)
-              .post("/api/articles/1/comments")
-              .send({ username: "nonExistentUser", body: "Love it" })
-              .expect(422)
-              .then(({ body }) => {
-                expect(body.msg).to.equal("Unprocessable Entity");
-              });
-          });
           it("ERROR STATUS:400 when a post request is made containing an invalid body", () => {
             return request(app)
               .post("/api/articles/1/comments")
@@ -799,6 +873,24 @@ describe("/api", () => {
               .expect(400)
               .then(({ body }) => {
                 expect(body.msg).to.equal("Bad Request");
+              });
+          });
+          it("ERROR STATUS:422 when a post request is made containing a valid username which does not match any users", () => {
+            return request(app)
+              .post("/api/articles/1/comments")
+              .send({ username: "nonExistentUser", body: "Love it" })
+              .expect(422)
+              .then(({ body }) => {
+                expect(body.msg).to.equal("Unprocessable Entity");
+              });
+          });
+          it("ERROR STATUS:422 when a valid, non-existent article_id is passed as the article_id parametric endpoint", () => {
+            return request(app)
+              .post("/api/articles/9999999/comments")
+              .send({ username: "icellusedkars", body: "Love it" })
+              .expect(422)
+              .then(({ body }) => {
+                expect(body.msg).to.equal("Unprocessable Entity");
               });
           });
         });
