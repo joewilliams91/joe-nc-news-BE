@@ -2,7 +2,8 @@ const {
   updateArticleByArticleId,
   selectArticles,
   getTotalCount,
-  insertArticle
+  insertArticle,
+  deleteArticleByArticleId
 } = require("../models/articles-models");
 
 const {
@@ -33,13 +34,11 @@ exports.postCommentByArticleId = (req, res, next) => {
   const { username, body } = req.body;
   const { article_id } = req.params;
 
-  
-    insertCommentByArticleId(username, body, article_id)
-      .then(comment => {
-        res.status(201).send({ comment });
-      })
-      .catch(next);
-  
+  insertCommentByArticleId(username, body, article_id)
+    .then(comment => {
+      res.status(201).send({ comment });
+    })
+    .catch(next);
 };
 
 exports.getCommentsByArticleId = (req, res, next) => {
@@ -48,6 +47,17 @@ exports.getCommentsByArticleId = (req, res, next) => {
   selectCommentsByArticleId(article_id, sort_by, order, limit, p)
     .then(comments => {
       res.status(200).send({ comments });
+    })
+    .catch(next);
+};
+
+exports.removeArticleByArticleId = (req, res, next) => {
+  const { article_id } = req.params;
+  deleteArticleByArticleId(article_id)
+    .then(deleteCount => {
+      if (deleteCount) {
+        res.sendStatus(204).send();
+      }
     })
     .catch(next);
 };

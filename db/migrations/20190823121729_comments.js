@@ -4,11 +4,13 @@ exports.up = function(knex) {
     commentsTable
       .string("author")
       .notNullable()
-      .references("users.username");
+      .references("users.username")
+      .onDelete("CASCADE");
     commentsTable
       .integer("article_id")
       .notNullable()
-      .references("articles.article_id");
+      .references("articles.article_id")
+      .onDelete("CASCADE");
     commentsTable.integer("votes").defaultsTo(0);
     commentsTable.timestamp("created_at").defaultsTo(knex.fn.now());
     commentsTable.string("body", 10000).notNullable();
@@ -16,5 +18,5 @@ exports.up = function(knex) {
 };
 
 exports.down = function(knex) {
-    return knex.schema.dropTable("comments");
+  return knex.schema.dropTable("comments");
 };

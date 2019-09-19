@@ -117,6 +117,17 @@ exports.updateArticleByArticleId = (incrementer, article_id) => {
     });
 };
 
+exports.deleteArticleByArticleId = article_id => {
+  return connection("articles")
+    .where({ article_id })
+    .del()
+    .then(deleteCount => {
+      if (deleteCount === 0)
+        return Promise.reject({ status: 404, msg: "Not Found" });
+      else return deleteCount;
+    });
+};
+
 exports.insertArticle = (title, body, topic, author, votes) => {
   const newArticle = { title, body, topic, author, votes };
   if (

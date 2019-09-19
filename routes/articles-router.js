@@ -5,7 +5,8 @@ const {
   postCommentByArticleId,
   getCommentsByArticleId,
   getArticles,
-  postArticle
+  postArticle,
+  removeArticleByArticleId
 } = require("../controllers/articles-controllers");
 const { send405Error } = require("../errors/error-handler");
 const articlesRouter = express.Router();
@@ -20,6 +21,7 @@ articlesRouter
   .route("/:article_id")
   .get(getArticleByArticleId)
   .patch(patchArticleByArticleId)
+  .delete(removeArticleByArticleId)
   .all(send405Error);
 
 articlesRouter

@@ -15,6 +15,7 @@ exports.updateCommentByCommentId = (comment_id, incrementer) => {
     });
 };
 
+
 exports.removeCommentByCommentId = comment_id => {
   return connection("comments")
     .where("comment_id", "=", comment_id)

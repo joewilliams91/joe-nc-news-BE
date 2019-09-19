@@ -789,9 +789,48 @@ describe("/api", () => {
               });
           });
         });
+        describe("DELETE", () => {
+          it("STATUS CODE:204 no content for successful deletion, deleting both the article from the articles table (and any associated comments from the comments table, using onDelete(CASCADE))", () => {
+            return request(app)
+              .get("/api/articles")
+              .expect(200)
+              .then(response => {
+                expect(+response.body.total_count).to.equal(12);
+              })
+              .then(() => {
+                return request(app)
+                  .delete("/api/articles/1")
+                  .expect(204);
+              })
+              .then(() => {
+                return request(app)
+                  .get("/api/articles")
+                  .expect(200)
+                  .then(response => {
+                    expect(+response.body.total_count).to.equal(11);
+                  });
+              });
+          });
+          it("ERROR STATUS:404 when a valid article_id that does not match any article_id in the database is passed as a parametric endpoint", () => {
+            return request(app)
+              .delete("/api/articles/999999999")
+              .expect(404)
+              .then(({ body }) => {
+                expect(body.msg).to.equal("Not Found");
+              });
+          });
+          it("ERROR STATUS:400 when an invalid article_id is passed as a parametric endpoint", () => {
+            return request(app)
+              .delete("/api/articles/invalidComment")
+              .expect(400)
+              .then(({ body }) => {
+                expect(body.msg).to.equal("Bad Request");
+              });
+          });
+        });
         describe("INVALID METHODS", () => {
           it("STATUS CODE: 405 when invalid methods are requested", () => {
-            const invalidMethods = ["put", "post", "delete"];
+            const invalidMethods = ["put", "post"];
             const methodPromises = invalidMethods.map(method => {
               return request(app)
                 [method]("/api/articles/1")
